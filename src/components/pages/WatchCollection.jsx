@@ -390,7 +390,6 @@ const WatchCollection = () => {
       monthIndex: index,
     }));
   };
-
   const handleViewPriceChart = async (watch) => {
     if (!watch.monthlyPrices) {
       try {
@@ -398,8 +397,9 @@ const WatchCollection = () => {
           `/watch-analysis/${watch.watch_id}`
         );
 
-        if (response.data && response.data.success) {
-          const analysisData = response.data.data;
+        // FIXED: Changed 'response' to 'analysisResponse'
+        if (analysisResponse.data && analysisResponse.data.success) {
+          const analysisData = analysisResponse.data.data;
           watch.monthlyPrices = analysisData.monthlyPrices;
           watch.trendAnalysis = analysisData.trendAnalysis;
           watch.recommendations = analysisData.recommendations;
@@ -413,7 +413,6 @@ const WatchCollection = () => {
     setPriceChartData(preparePriceChartData(watch));
     setPriceChartDialogOpen(true);
   };
-
   // ========================================
   // SIMPLIFIED NFT FUNCTIONS
   // ========================================
@@ -591,10 +590,11 @@ const WatchCollection = () => {
             // Limit to 20 watches for performance
             if (watch.ai_analyzed) {
               try {
-                const response = await api.get(
+                const analysisResponse = await api.get(
                   `/watch-analysis/${watch.watch_id}`
                 );
 
+                // FIXED: Changed 'analysisResponse' to 'analysisResponse' (keeping it consistent)
                 if (analysisResponse.data && analysisResponse.data.success) {
                   const analysisData = analysisResponse.data.data;
                   return {
