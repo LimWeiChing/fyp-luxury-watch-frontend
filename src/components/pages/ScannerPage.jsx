@@ -445,7 +445,7 @@ const ScannerPage = () => {
       case "manufacturer":
         if (entityType === "raw-material") {
           try {
-            const response = await api.get(`/watch/${entityId}`);
+            const response = await api.get(`/raw-material/${entityId}`);;
             if (response.data && response.data.length > 0) {
               const dbMaterial = response.data[0];
               if (dbMaterial.used) {
