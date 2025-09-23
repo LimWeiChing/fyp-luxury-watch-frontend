@@ -102,7 +102,7 @@ const Hero = () => {
         </Toolbar>
       </TransparentAppBar>
 
-      {/* Fullscreen autoplay video 
+      {/* Fullscreen autoplay video */}
       <video
         autoPlay
         loop
