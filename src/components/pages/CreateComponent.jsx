@@ -274,43 +274,120 @@ const CreateComponent = () => {
     setScannedRawMaterialId(rawMaterial.componentId);
   };
 
+  // FIXED fetchRawMaterialData function for CreateComponent.jsx
+  // Replace the entire function with this corrected version
+
   const fetchRawMaterialData = async (rawMaterialId) => {
     try {
       setActiveStep(1);
-      // First check database
-      const dbResponse = await api.get(`/raw-material/${rawMaterialId}`);
+      console.log("🔍 Fetching raw material data for:", rawMaterialId);
 
-      // Also fetch from blockchain
-      const { ethereum } = window;
-      if (ethereum) {
-        const provider = new ethers.providers.Web3Provider(ethereum);
-        const contract = new ethers.Contract(
-          CONTRACT_ADDRESS,
-          contractABI,
-          provider
-        );
+      // Step 1: Try database first (PRIMARY SOURCE - This was missing!)
+      try {
+        console.log("📡 Attempting database fetch...");
+        const dbResponse = await api.get(`/raw-material/${rawMaterialId}`);
 
-        const rawMaterialBlockchain = await contract.getRawMaterial(
-          rawMaterialId
-        );
-        if (rawMaterialBlockchain && !rawMaterialBlockchain.used) {
-          const blockchainData = {
-            componentId: rawMaterialBlockchain.componentId,
-            materialType: rawMaterialBlockchain.materialType,
-            origin: rawMaterialBlockchain.origin,
-            image: rawMaterialBlockchain.image,
-            location: rawMaterialBlockchain.location,
-            timestamp: rawMaterialBlockchain.timestamp,
-            supplier: rawMaterialBlockchain.supplier,
-            used: rawMaterialBlockchain.used,
+        if (dbResponse.data && dbResponse.data.length > 0) {
+          const dbData = dbResponse.data[0];
+          console.log("✅ Database data found:", dbData);
+
+          // ✅ CRITICAL FIX: Actually process the database response
+          const rawMaterialFromDB = {
+            componentId: dbData.component_id,
+            materialType: dbData.material_type,
+            origin: dbData.origin,
+            image: dbData.image,
+            location: dbData.location,
+            timestamp: dbData.timestamp,
+            supplier: dbData.supplier_address,
+            used: dbData.used, // ✅ Use database 'used' status as source of truth
+            createdAt: dbData.created_at,
+            updatedAt: dbData.updated_at,
           };
-          setRawMaterialData(blockchainData);
+
+          setRawMaterialData(rawMaterialFromDB);
+          console.log(
+            "✅ Raw material data set from database, used status:",
+            dbData.used
+          );
+          return; // ✅ Exit early - database is authoritative
         }
+      } catch (dbError) {
+        console.log(
+          "⚠️ Database fetch failed, trying blockchain...",
+          dbError.message
+        );
+      }
+
+      // Step 2: Fallback to blockchain only if database fails
+      console.log("🔗 Attempting blockchain fetch as fallback...");
+      const { ethereum } = window;
+
+      if (!ethereum) {
+        setErrMsg("Please install MetaMask to access blockchain data");
+        return;
+      }
+
+      const provider = new ethers.providers.Web3Provider(ethereum);
+      const contract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        contractABI,
+        provider
+      );
+
+      const rawMaterialBlockchain = await contract.getRawMaterial(
+        rawMaterialId
+      );
+
+      if (rawMaterialBlockchain && rawMaterialBlockchain.componentId) {
+        console.log("✅ Blockchain data found:", rawMaterialBlockchain);
+
+        // ✅ CRITICAL FIX: Set data regardless of 'used' status
+        const rawMaterialFromBlockchain = {
+          componentId: rawMaterialBlockchain.componentId,
+          materialType: rawMaterialBlockchain.materialType,
+          origin: rawMaterialBlockchain.origin,
+          image: rawMaterialBlockchain.image,
+          location: rawMaterialBlockchain.location,
+          timestamp: rawMaterialBlockchain.timestamp,
+          supplier: rawMaterialBlockchain.supplier,
+          used: rawMaterialBlockchain.used, // ✅ Show actual blockchain status
+        };
+
+        setRawMaterialData(rawMaterialFromBlockchain);
+        console.log(
+          "✅ Raw material data set from blockchain, used status:",
+          rawMaterialBlockchain.used
+        );
+      } else {
+        setErrMsg("Raw material not found in database or blockchain");
+        console.log("❌ Raw material not found in blockchain");
       }
     } catch (error) {
-      console.error("Error fetching raw material data:", error);
-      setErrMsg("Failed to fetch raw material data");
+      console.error("❌ Error fetching raw material data:", error);
+      setErrMsg("Failed to fetch raw material data. Please try again.");
     }
+  };
+
+  // ✅ OPTIONAL: Enhanced validation function for better error handling
+  const validateRawMaterial = () => {
+    if (!rawMaterialData) {
+      setErrMsg("Please scan a raw material QR code first");
+      return false;
+    }
+
+    if (rawMaterialData.used === true) {
+      setErrMsg(
+        "This raw material has already been used for component creation"
+      );
+      return false;
+    }
+
+    console.log(
+      "✅ Raw material validation passed, used status:",
+      rawMaterialData.used
+    );
+    return true;
   };
 
   const generateComponentId = async () => {
@@ -578,13 +655,10 @@ const CreateComponent = () => {
       setLoading(false);
       return;
     }
-
-    if (rawMaterialData && rawMaterialData.used) {
-      setErrMsg("This raw material has already been used");
+    if (!validateRawMaterial()) {
       setLoading(false);
       return;
     }
-
     if (componentType === "Custom" && !customComponentType.trim()) {
       setErrMsg("Please specify the custom component type");
       setLoading(false);
