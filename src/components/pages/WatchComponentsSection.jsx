@@ -614,10 +614,10 @@ const WatchComponentsSection = ({
                                 Supplied By
                               </TableCell>
                               <TableCell>
-                                {_formatAddress(
+                                {
                                   rawMaterials[selectedComponentIndex]
                                     .suppliedBy
-                                )}
+                                }
                               </TableCell>
                             </TableRow>
                             <TableRow
